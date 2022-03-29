@@ -130,7 +130,6 @@ async def echo(self, message : str):
 @bot.command()
 async def wrestler(self, name):
   print('wrestler command accepted with "{0}" parameters'.format(name))
-  w = Wrestler(name)
   await self.send("Wrestler {0} added".format(name))
 #list current wrestlers
 @bot.command()
@@ -206,7 +205,6 @@ async def match(self, *wrestlers):
   if "wrestlername" in db.keys():
     names = db["wrestlername"]
     if set(wrestlers).issubset(set(names)):
-      nextmatch = Match(wrestlers)
       message = "Next match is between "
       for x in wrestlers:
         index = get_index(x)
@@ -215,11 +213,6 @@ async def match(self, *wrestlers):
     else:
       await self.send("One of the wrestlers you entered doesnt match the database; this is where it would tell you which one if i was a good programmer")
   else:
-    await self.send("No wrestlers in database, add them with the '!wrestler' command")
-#list current pool
-@bot.command()
-async def pool(self):
-  await self.send("Current Pool: " + nextmatch.get_pool)
-  
+    await self.send("No wrestlers in database, add them with the '!wrestler' command") 
 #start bot
 bot.run(token)
