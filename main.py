@@ -16,6 +16,8 @@ intents = discord.Intents.default()
 #establishes logging on file discord.log
 logger = logging.getLogger('discord')
 handler = logging.FileHandler(filename='discord.log', encoding= 'utf-8', mode='w')
+#error message for an empty database
+empty = "No wrestlers found in database"
 
 #IMPLIMENTING VARIABLES
 #starts logging
@@ -33,6 +35,18 @@ class Wrestler:
   #constructor
   def __init__(self, name):
     update_wrestler(name)
+#Match Object
+class Match:
+  def __init__(self, *wrestlers):
+    self.contestents = wrestlers
+    self.pool = 0
+  def increase_pool(self):
+    self.pool = self.pool + 1
+  def get_pool():
+    return self.pool
+
+#Global Match Variable
+nextmatch : Match
 #update wrestler database
 def update_wrestler(name):
   if "wrestlername" in db.keys():
@@ -116,7 +130,6 @@ async def echo(self, message : str):
 @bot.command()
 async def wrestler(self, name):
   print('wrestler command accepted with "{0}" parameters'.format(name))
-  w = Wrestler(name)
   await self.send("Wrestler {0} added".format(name))
 #list current wrestlers
 @bot.command()
@@ -141,7 +154,7 @@ async def list(self):
       message = message + db["wrestlername"][x] + "(" + str(db["wrestlerwins"][x]) + "," + str(db["wrestlerloss"][x]) + "), "
     await self.send(message) 
   else:
-    await self.send("No wrestlers found in database")
+    await self.send(empty)
     print('Nothing in Database')
 #remove wrestler
 @bot.command()
@@ -150,13 +163,13 @@ async def delwrestler(self, name):
   if "wrestlername" in db.keys():
     names = db["wrestlername"]
     if name in names:
-      index = names.index(name)
+      index = get_index(name)
       delete_wrestlername(index)
       await self.send('Wrestler {0} removed from database'.format(name))
     else:
       await self.send('No wrestler with name {0} in database'.format(name))
   else:
-    await self.send("No wrestlers found in database")
+    await self.send(empty)
 #Set record
 @bot.command()
 async def setrecord(self, wrestler, wins, loss):
@@ -171,6 +184,35 @@ async def setrecord(self, wrestler, wins, loss):
     else:
       await self.send("No wrestler with name {0} found. Use !list to see a list of currently registered wrestlers.".format(wrestler))
   else:
-    await self.send("No wrestlers found in database")
+    await self.send(empty)
+#Display the recod of a specific wrestler
+@bot.command()
+async def record(self, wrestler):
+  print('record command accepted with name {0}'.format(wrestler))
+  if "wrestlername" in db.keys():
+    names = db["wrestlername"]
+    if wrestler in names:
+      index = get_index(wrestler)
+      await self.send(db["wrestlername"][index] + "(" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ")")
+    else:
+      await self.send("No wrestler with name {0} found. Use !list to see a list of currently registered wrestlers.".format(wrestler))
+  else:
+    await self.send(empty)
+#command to construct Match
+@bot.command()
+async def match(self, *wrestlers):
+  print('match command accepted with ' + '{} arguments: {}'.format(len(wrestlers), ', '.join(wrestlers)))
+  if "wrestlername" in db.keys():
+    names = db["wrestlername"]
+    if set(wrestlers).issubset(set(names)):
+      message = "Next match is between "
+      for x in wrestlers:
+        index = get_index(x)
+        message = message + x + " (" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ")"
+      await self.send(message)
+    else:
+      await self.send("One of the wrestlers you entered doesnt match the database; this is where it would tell you which one if i was a good programmer")
+  else:
+    await self.send("No wrestlers in database, add them with the '!wrestler' command") 
 #start bot
 bot.run(token)
