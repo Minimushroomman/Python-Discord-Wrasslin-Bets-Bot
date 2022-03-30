@@ -30,6 +30,7 @@ intents.messages = True
 #establish and implement bot
 bot = commands.Bot(command_prefix=commands.when_mentioned_or('!'), description=description, intents=intents)
 
+#FUNCTIONS
 #update wrestler database
 def update_wrestler(name):
   if "wrestlername" in db.keys():
@@ -50,6 +51,7 @@ def update_wrestler(name):
     db["wrestlerloss"] = loss
   else:
     db["wrestlerloss"] = [0]
+
 #del wrestler name database
 def delete_wrestlername(index):
   names = db["wrestlername"]
@@ -62,6 +64,7 @@ def delete_wrestlername(index):
     db["wrestlername"] = names
     db["wrestlerwins"] = wins
     db["wrestlerloss"] = loss
+
 #get index of wrestler
 def get_index(name):
   if "wrestlername" in db.keys():
@@ -69,6 +72,7 @@ def get_index(name):
     if name in names:
       index = names.index(name)
       return index
+
 #set wins
 def set_wins(name, x):
   if "wrestlername" in db.keys():
@@ -76,6 +80,7 @@ def set_wins(name, x):
     if name in names:
       index = get_index(name)
       db["wrestlerwins"][index] = x
+
 #return wintger
 def get_wins(name):
   if "wrestlername" in db.keys():
@@ -83,6 +88,7 @@ def get_wins(name):
     if name in names:
       index = get_index(name)
       return db["wrestlerwins"][index]
+
 #set losses
 def set_loss(name, x):
   if "wrestlername" in db.keys():
@@ -90,6 +96,7 @@ def set_loss(name, x):
     if name in names:
       index = get_index(name)
       db["wrestlerloss"][index] = x
+
 #return loss
 def get_loss(name):
   if "wrestlername" in db.keys():
@@ -97,19 +104,51 @@ def get_loss(name):
     if name in names:
       index = get_index(name)
       return db["wrestlerloss"][index]
-#set prize pool
-def set_pool(x):
-  db["pool"] = x
+
+#add users
+def update_users(name):
+  if "users" in db.keys():
+    names = db["users"]
+    names.append(name)
+    db["users"] = names
+  else:
+    db["users"] = [name]
+  if "bank" in db.keys():
+    values = db["bank"]
+    values.append(0)
+    db["bank"] = values
+  else:
+    db["bank"] = [0]
+
+#return user index
+def get_user_index(name):
+  if "users" in db.keys():
+    names = db["users"]
+    if name in names:
+      index = names.index(name)
+      return index
+
+#set a users bank
+def set_bank(user, x):
+  if "users" in db.keys():
+    names = db["users"]
+    if user in names:
+      index = get_user_index(user)
+      db["bank"][index] = x
+
+
 #COMMANDS AND SUCH
 #log start in console
 @bot.event
 async def on_ready():
   print('Logged on as {0.user}!'.format(bot))
+
 #log user messages in console for troubleshooting, aswell as processing commands
 @bot.event
 async def on_message(message):
   print('Message from {0.author}: {0.content}'.format(message))
   await bot.process_commands(message)
+
 #welcome message
 @bot.event
 async def on_member_join(member):
@@ -118,17 +157,20 @@ async def on_member_join(member):
     to_send = 'Welcome {0.mention} to {1.name}!'.format(member, guild)
   await guild.system_channel.send(to_send)
 #echo command
+
 @bot.command()
 async def echo(self, message : str):
   print('echo command accepted with "{0}" parameters'.format(message))
   await self.send(message + '\nIs there an echo in here?')
 #add wrestler
+
 @bot.command()
 async def wrestler(self, name):
   print('wrestler command accepted with "{0}" parameters'.format(name))
   update_wrestler(name)
   await self.send("Wrestler {0} added".format(name))
 #list current wrestlers
+
 @bot.command()
 async def list(self):
   print('list command accepted')
@@ -160,6 +202,7 @@ async def list(self):
   else:
     await self.send(empty)
     print('Nothing in Database')
+
 #remove wrestler
 @bot.command()
 async def delwrestler(self, name):
@@ -174,6 +217,7 @@ async def delwrestler(self, name):
       await self.send('No wrestler with name {0} in database'.format(name))
   else:
     await self.send(empty)
+
 #Set record
 @bot.command()
 async def setrecord(self, wrestler, wins, loss):
@@ -189,6 +233,7 @@ async def setrecord(self, wrestler, wins, loss):
       await self.send("No wrestler with name {0} found. Use !list to see a list of currently registered wrestlers.".format(wrestler))
   else:
     await self.send(empty)
+
 #Display the recod of a specific wrestler
 @bot.command()
 async def record(self, wrestler):
@@ -202,6 +247,7 @@ async def record(self, wrestler):
       await self.send("No wrestler with name {0} found. Use !list to see a list of currently registered wrestlers.".format(wrestler))
   else:
     await self.send(empty)
+
 #command to construct Match
 @bot.command()
 async def match(self, *wrestlers):
@@ -219,9 +265,11 @@ async def match(self, *wrestlers):
       await self.send("One of the wrestlers you entered doesnt match the database; this is where it would tell you which one if i was a good programmer")
   else:
     await self.send(empty) 
+
 #set the winner of current match
 @bot.command()
 async def win(self, winner):
+  print('win command accepted with name {0}'.format(winner))
   if "contenders" in db.keys():
     cont = db["contenders"]
     if winner in cont:
@@ -245,14 +293,53 @@ async def win(self, winner):
       await self.send(winner + " not in current match")
   else:
     await self.send("No current match started")
+
 #clear match
 @bot.command()
 async def clearmatch(self):
+  print('clearmatch command accepted')
   if "contenders" in db.keys():
     c = db["contenders"]
     c.clear()
     await self.send("Match Cleared")
   else:
     await self.send("No current match started")
+
+#join betting pool
+@bot.command()
+async def join(self):
+  name = str(self.author)
+  print('join command accepted with name {0}'.format(name))
+  if "users" in db.keys():
+    names = db["users"]
+    if name in names:
+      await self.send("You have already joined the pool")
+    else:
+      update_users(name)
+  else:
+    update_users(name)
+
+#set users bank
+@bot.command()
+async def setbank(self, user, x):
+  print('setbank command accepted with name {0} and ammount {1}'.format(user, x))
+  if "users" in db.keys():
+    names = db["users"]
+    if user in names:
+      index = get_user_index(user)
+      set_bank(user, x)
+      await self.send("user {0} bank set to ".format(user) + str(db["bank"][index]))
+
+#tell a users balance
+@bot.command()
+async def bal(self):
+  if "users" in db.keys():
+    names = db["users"]
+    name = str(self.author)
+    if name in names:
+      index = get_user_index(name)
+      await self.send("{0}'s current balance: ".format(name) + str(db["bank"][index]))
+
+#CONNECT TO DISCORD API
 #start bot
 bot.run(token)
