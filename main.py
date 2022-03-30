@@ -17,7 +17,7 @@ intents = discord.Intents.default()
 logger = logging.getLogger('discord')
 handler = logging.FileHandler(filename='discord.log', encoding= 'utf-8', mode='w')
 #error message for an empty database
-empty = "No wrestlers found in database"
+empty = "No wrestlers found in database, use '!wrestler' to add one"
 
 #IMPLIMENTING VARIABLES
 #starts logging
@@ -30,23 +30,6 @@ intents.messages = True
 #establish and implement bot
 bot = commands.Bot(command_prefix=commands.when_mentioned_or('!'), description=description, intents=intents)
 
-#wrestler object
-class Wrestler:
-  #constructor
-  def __init__(self, name):
-    update_wrestler(name)
-#Match Object
-class Match:
-  def __init__(self, *wrestlers):
-    self.contestents = wrestlers
-    self.pool = 0
-  def increase_pool(self):
-    self.pool = self.pool + 1
-  def get_pool():
-    return self.pool
-
-#Global Match Variable
-nextmatch : Match
 #update wrestler database
 def update_wrestler(name):
   if "wrestlername" in db.keys():
@@ -93,6 +76,13 @@ def set_wins(name, x):
     if name in names:
       index = get_index(name)
       db["wrestlerwins"][index] = x
+#return wintger
+def get_wins(name):
+  if "wrestlername" in db.keys():
+    names = db["wrestlername"]
+    if name in names:
+      index = get_index(name)
+      return db["wrestlerwins"][index]
 #set losses
 def set_loss(name, x):
   if "wrestlername" in db.keys():
@@ -100,10 +90,16 @@ def set_loss(name, x):
     if name in names:
       index = get_index(name)
       db["wrestlerloss"][index] = x
-#user object
-class User:
-  def __init__(self, name):
-    self.name = name
+#return loss
+def get_loss(name):
+  if "wrestlername" in db.keys():
+    names = db["wrestlername"]
+    if name in names:
+      index = get_index(name)
+      return db["wrestlerloss"][index]
+#set prize pool
+def set_pool(x):
+  db["pool"] = x
 #COMMANDS AND SUCH
 #log start in console
 @bot.event
@@ -130,6 +126,7 @@ async def echo(self, message : str):
 @bot.command()
 async def wrestler(self, name):
   print('wrestler command accepted with "{0}" parameters'.format(name))
+  update_wrestler(name)
   await self.send("Wrestler {0} added".format(name))
 #list current wrestlers
 @bot.command()
@@ -137,18 +134,25 @@ async def list(self):
   print('list command accepted')
   print(db.keys())
   if "wrestlername" in db.keys():
-    troubleshootnames= "current array of names "
+    troubleshootnames= "current array of names  "
     troubleshootloss = "current array of losses "
-    troubleshootwins = "current array of wins "
+    troubleshootwins = "current array of wins   "
+    troubleshootcontenders = "current array of contenders "
     for x in db["wrestlername"]:
       troubleshootnames = troubleshootnames + x + ", "
     for x in db["wrestlerwins"]:
       troubleshootwins = troubleshootwins + str(x) + ", "
     for x in db["wrestlerloss"]:
       troubleshootloss = troubleshootloss + str(x) + ", "
+    if "contenders" in db.keys():
+      for x in db["contenders"]:
+        troubleshootcontenders =  troubleshootcontenders + x + ", "
+    else:
+      troubleshootcontenders = "no database of contenders because there is no current match"
     print(troubleshootwins)
     print(troubleshootloss)
     print(troubleshootnames)
+    print(troubleshootcontenders)
     message = "List of current wrestlers "
     for x in range(len(db["wrestlername"])):
       message = message + db["wrestlername"][x] + "(" + str(db["wrestlerwins"][x]) + "," + str(db["wrestlerloss"][x]) + "), "
@@ -206,13 +210,49 @@ async def match(self, *wrestlers):
     names = db["wrestlername"]
     if set(wrestlers).issubset(set(names)):
       message = "Next match is between "
+      db["contenders"] = wrestlers
       for x in wrestlers:
         index = get_index(x)
-        message = message + x + " (" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ")"
+        message = message + x + " (" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ") "
       await self.send(message)
     else:
       await self.send("One of the wrestlers you entered doesnt match the database; this is where it would tell you which one if i was a good programmer")
   else:
-    await self.send("No wrestlers in database, add them with the '!wrestler' command") 
+    await self.send(empty) 
+#set the winner of current match
+@bot.command()
+async def win(self, winner):
+  if "contenders" in db.keys():
+    cont = db["contenders"]
+    if winner in cont:
+      w = get_wins(winner)
+      w = w + 1
+      set_wins(winner, w)
+      index = get_index(winner)
+      message = winner + " wins! Record updated to (" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ") "
+      cont.remove(winner)
+      for x in cont:
+        if x in db["wrestlername"]:
+          l = get_loss(x)
+          l = l + 1
+          set_loss(x, l)
+          index = get_index(x)
+          message = message + x + " lost! Record updated to (" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ") "
+      await self.send(message)
+      cont.clear()
+      db["contenders"] = cont
+    else:
+      await self.send(winner + " not in current match")
+  else:
+    await self.send("No current match started")
+#clear match
+@bot.command()
+async def clearmatch(self):
+  if "contenders" in db.keys():
+    c = db["contenders"]
+    c.clear()
+    await self.send("Match Cleared")
+  else:
+    await self.send("No current match started")
 #start bot
 bot.run(token)
