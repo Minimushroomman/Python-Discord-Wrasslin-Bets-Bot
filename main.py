@@ -230,7 +230,7 @@ async def wrestler(self, name):
 
 #list current wrestlers
 @bot.command()
-async def list(self):
+async def wrestlerlist(self):
   print('list command accepted')
   print(db.keys())
   troubleshootnames= "current array of names  "
@@ -400,14 +400,17 @@ async def match(self, *wrestlers):
     names = db["wrestlername"]
     if set(wrestlers).issubset(set(names)):
       message = "Next match is between "
+      message2 = "Use " 
       db["contenders"] = wrestlers
       pool = []
       for x in wrestlers:
         index = get_index(x)
         pool.append(0)
         message = message + x + " (" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ") "
+        message2 = message2 + "!bet \"{0}\" ".format(x)
       db["pool"] = pool
       await self.send(message)
+      await self.send(message2)
     else:
       await self.send("One of the wrestlers you entered doesnt match the database; this is where it would tell you which one if i was a good programmer")
   else:
@@ -443,11 +446,11 @@ async def win(self, winner):
         users = db["contender6"]
       if cindex == 7:
         users = db["contender7"]
-      winnings = totpool / len(users)
+      winnings = (totpool / len(users))
       for x in users:
         index = get_user_index(x)
         bal = db["bank"][index]
-        bal = bal + winnings
+        bal = float(bal) + winnings
         db["bank"][index] = bal
       cont.remove(winner)
       for x in cont:
@@ -685,8 +688,10 @@ async def pool(self):
           message = message + contenders[x] + "'s current pool is " + str(pool[x]) + " with" + better7 + "betting on them.\n"
     await self.send(message)
 
+
+# See balances of all users
 @bot.command()
-async def balall(self):
+async def userlist(self):
   message = "Current Balacne for current users: "
   if "users" in db.keys():
     users = db["users"]
@@ -694,6 +699,19 @@ async def balall(self):
       index = get_user_index(x)
       message = message + x + ": " + str(db["bank"][index]) + " "
     await self.send(message)
+
+
+# change the name of a wrestler
+@bot.command()
+async def namechange(self, oldname, newname):
+  if "wrestlername" in db.keys():
+    names = db["wrestlername"]
+    if oldname in names:
+      index = get_index(oldname)
+      names[index] = newname
+      await self.send("{0} changed to {1}".format(oldname, newname))
+    else:
+      await self.send ("{0} doesn't exist in the database!".format(oldname))
 #CONNECT TO DISCORD API
 #start bot
 bot.run(token)
