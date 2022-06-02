@@ -114,7 +114,7 @@ def update_users(name):
     db["users"] = [name]
   if "bank" in db.keys():
     values = db["bank"]
-    values.append(0)
+    values.append(10)
     db["bank"] = values
   else:
     db["bank"] = [0]
@@ -150,6 +150,9 @@ def get_pool():
     total = 0
     for x in p:
       total = total + x
+    if "pool_push" in db.keys():
+      pu = db["pool_push"]
+      total = p + pu
     return total
 
 #wipe match parameters
@@ -194,7 +197,16 @@ def wipe():
     c7 = db["contender5"]
     c7.clear()
     db["contender7"] = c7
+  if "pool_push" in db.keys():
+    db["pool_push"] = 0
 
+
+# push match
+def push_match():
+  if "pool" in db.keys():
+    totpool = get_pool()
+    db["pool_push"] = totpool
+      
 #COMMANDS AND SUCH
 #log start in console
 @bot.event
@@ -225,8 +237,16 @@ async def echo(self, message : str):
 @bot.command()
 async def wrestler(self, name):
   print('wrestler command accepted with "{0}" parameters'.format(name))
-  update_wrestler(name)
-  await self.send("Wrestler {0} added".format(name))
+  if "wrestlername" in db.keys():
+    names = db["wrestlername"]
+    if name in names:
+      await self.send("Wrestler {0} already exists in the database!".format(name))
+    else:
+      update_wrestler(name)
+      await self.send("Wrestler {0} added".format(name))
+  else:
+      update_wrestler(name)
+      await self.send("Wrestler {0} added and database created!".format(name))
 
 #list current wrestlers
 @bot.command()
@@ -388,11 +408,12 @@ async def record(self, wrestler):
       index = get_index(wrestler)
       await self.send(db["wrestlername"][index] + "(" + str(db["wrestlerwins"][index]) + "," + str(db["wrestlerloss"][index]) + ")")
     else:
-      await self.send("No wrestler with name {0} found. Use !list to see a list of currently registered wrestlers.".format(wrestler))
+      await self.send("No wrestler with name {0} found. Use !wrestlerlist to see a list of currently registered wrestlers.".format(wrestler))
   else:
     await self.send(empty)
 
-#command to construct Match
+    
+# command to construct Match
 @bot.command()
 async def match(self, *wrestlers):
   print('match command accepted with ' + '{} arguments: {}'.format(len(wrestlers), ', '.join(wrestlers)))
@@ -416,7 +437,8 @@ async def match(self, *wrestlers):
   else:
     await self.send(empty) 
 
-#set the winner of current match
+    
+# set the winner of current match
 @bot.command()
 async def win(self, winner):
   print('win command accepted with name {0}'.format(winner))
@@ -447,11 +469,17 @@ async def win(self, winner):
       if cindex == 7:
         users = db["contender7"]
       winnings = (totpool / len(users))
-      for x in users:
-        index = get_user_index(x)
-        bal = db["bank"][index]
-        bal = float(bal) + winnings
-        db["bank"][index] = bal
+      if users:
+        for x in users:
+          index = get_user_index(x)
+          bal = db["bank"][index]
+          bal = float(bal) + winnings
+          db["bank"][index] = round(bal, 2)
+          print("win works")
+      else:
+        print("else statement happened")
+        message = "No one bet on winner... Pool pushed to next match (please work...) /n"
+        push()
       cont.remove(winner)
       for x in cont:
         if x in db["wrestlername"]:
@@ -467,14 +495,16 @@ async def win(self, winner):
   else:
     await self.send("No current match started")
 
-#clear match
+    
+# clear match
 @bot.command()
 async def clearmatch(self):
   print('clearmatch command accepted')
   await self.send("Matches wiped")
   wipe()
 
-#join betting pool
+  
+# join betting pool
 @bot.command()
 async def join(self):
   name = str(self.author)
@@ -490,9 +520,10 @@ async def join(self):
     update_users(name)
     await self.send("{0} has put their soul on the line!".format(name))
 
-#set users bank
+    
+# set users bank
 @bot.command()
-async def setbank(self, user, x):
+async def setbal(self, user, x):
   print('setbank command accepted with name {0} and ammount {1}'.format(user, x))
   if "users" in db.keys():
     names = db["users"]
@@ -505,7 +536,8 @@ async def setbank(self, user, x):
   else:
     await self.send("No user database. Have them '!join'")
 
-#tell a users balance
+    
+# tell a users balence
 @bot.command()
 async def bal(self):
   print('bal command accepted from {0}'.format(str(self.author)))
@@ -514,18 +546,20 @@ async def bal(self):
     name = str(self.author)
     if name in names:
       index = get_user_index(name)
-      await self.send("{0}'s current balance: {1}".format(name, str(db["bank"][index])))
+      await self.send("{0}'s current balence: {1}".format(name, str(db["bank"][index])))
     else:
       await self.send("{0} isn't registered. Use '!join'")
   else:
     await self.send("No users have joined yet. Use '!join'")
 
-#bet on a current match
+    
+# bet on a current match
 @bot.command()
 async def bet(self, contender):
   user = str(self.author)
   emessage = "{0} already bet in this match".format(user)
   print("Bet command accepted from {0} with {1} variable".format(user, contender))
+  # check if they have bet in the current match
   if user in db["contender0"]:
     await self.send(emessage)
   elif user in db["contender1"]:
@@ -546,11 +580,13 @@ async def bet(self, contender):
     if "contenders" in db.keys():
       contenders = db["contenders"]
       if contender in contenders:
+        # remove 1 coin from user
         index = get_contender_index(contender)
         b = get_user_index(user)
         bank = db["bank"][b]
         bank = float(bank) - 1
         set_bank(user, bank)
+        # Pool array matches contender 
         if index == 0:
           db["pool"][index] = db["pool"][index] + 1
           if "contender0" in db.keys():
@@ -692,7 +728,7 @@ async def pool(self):
 # See balances of all users
 @bot.command()
 async def userlist(self):
-  message = "Current Balacne for current users: "
+  message = "Current Balance for current users: "
   if "users" in db.keys():
     users = db["users"]
     for x in users:
@@ -712,6 +748,31 @@ async def namechange(self, oldname, newname):
       await self.send("{0} changed to {1}".format(oldname, newname))
     else:
       await self.send ("{0} doesn't exist in the database!".format(oldname))
+
+
+# Help command
+@bot.command()
+async def wrasslinhelp(self):
+  message = """
+  Use !Join to join the bets!(Might be one soul lighter after so...)
+  Once joined use !bal to see your current balance! (If your balance isn't accurate contact an admin)
+  Use !wrestlerlist to see the list of current wrestlers in the database!
+  Use !record "wrestler's name here" to see a specific wrestler's record!
+  Once a match is declared use !bet "contender's name here" to bet on your pick! Each bet uses one coin, with the total pool being divided between the users who bet on the winner.
+  Use !pool to see the current match, as well as the current betting pool!
+  Use !userlist to see who currently has their soul on the line!
+  """
+  await self.send(message)
+
+
+@bot.command()
+async def push(self):
+  totpool = get_pool()
+  push_match()
+  wipe()
+  await self.send("Betting pool pushed to next match with a toal of {0}!".format(totpool))
+  
+  
 #CONNECT TO DISCORD API
 #start bot
 bot.run(token)
